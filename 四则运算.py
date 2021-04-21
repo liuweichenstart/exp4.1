@@ -5,15 +5,16 @@ from tkinter import ttk
 from tkinter.messagebox import askyesno, showinfo
 from tkinter.ttk import Combobox
 
-list1 = ['+', '-', '*', '/']
-list2 = []  # 以字符串形式存储单个算式
-list3 = []  # 存储所有算式（不包括结果）
-list4 = []  # 存储对应结果
+list_symbol = ['+', '-', '*', '/']
+list_equation = []  # 以字符串形式存储单个算式
+list_formula = []  # 存储所有算式（不包括结果）
+list_answer = []  # 存储对应结果
 root = Tk()
 tree = ttk.Treeview(root, show='headings')
 num = 0
-difficulty = 0
-show_answer = 1
+difficulty = 0  # 算式难度系数
+
+show_answer = 1  # 是否在生成算式时显示答案 1 显示 0 不显示
 
 
 def center_window(w, h, self):  # 使窗口出现在界面中央
@@ -39,6 +40,22 @@ def get_num():
     return random.randint(1, 100)
 
 
+def Show_answers():
+    global show_answer
+    if show_answer != 1:
+        show_answer = 1
+        delButton(tree)
+        get_tree(num)
+
+
+def Hide_answers():
+    global show_answer
+    if show_answer == 1:
+        show_answer = 2
+        delButton(tree)
+        get_tree(num)
+
+
 def delButton(self):
     x = self.get_children()
     for item in x:
@@ -51,22 +68,22 @@ def get_formula(number):
         symbol = random.randint(2, 5)
         for j in range(2 * symbol + 1):
             if j % 2 == 0:
-                list2.append(get_num())
+                list_equation.append(get_num())
             else:
-                list2.append(list1[get_sign()])
-        formula = reduce(lambda x, y: str(x) + str(y), list2)
+                list_equation.append(list_symbol[get_sign()])
+        formula = reduce(lambda x, y: str(x) + str(y), list_equation)
         answer = eval(formula)
-        if answer % 1 == 0 and 0 <= answer <= 300 * difficulty - 200:
+        if answer % 1 == 0 and 0 <= answer <= 300 * difficulty - 200:    # 结果大小小于难度系数*300-200
             i += 1
-            list3.append(formula)
-            list4.append(answer)
-        list2.clear()
+            list_formula.append(formula)
+            list_answer.append(answer)
+        list_equation.clear()
 
 
 def store_data():
     for i in range(num):
         with open("result.txt", "a") as f:
-            f.write(list3[i] + '=' + str(list4[i]) + "\n")
+            f.write(list_formula[i] + '=' + str(list_answer[i]) + "\n")
     showinfo(title="通知", message="存储成功!")
 
 
@@ -82,9 +99,9 @@ def get_tree(tree_number):
     tree.heading('answer', text='答案')
     for i in range(tree_number):
         if show_answer == 1:
-            tree.insert('', i, values=(i + 1, list3[i], list4[i]))
+            tree.insert('', i, values=(i + 1, list_formula[i], list_answer[i]))
         else:
-            tree.insert('', i, values=(i + 1, list3[i], "**"))
+            tree.insert('', i, values=(i + 1, list_formula[i], "**"))
 
     tree.place(x=0, y=0, width=450, height=350)
     scroll = Scrollbar()
@@ -95,8 +112,9 @@ def get_tree(tree_number):
 def create_top():
     def get_formula_data():
         global difficulty, num, show_answer
-        list3.clear()
-        list4.clear()
+        allow_submission = 1
+        list_formula.clear()
+        list_answer.clear()
         delButton(tree)
         if numberChosen.get() == '简单':
             difficulty = 1
@@ -107,12 +125,18 @@ def create_top():
         elif numberChosen.get() == '困难':
             difficulty = 4
         else:
-            showinfo(title="通知", message="不能为空")
-        show_answer = v.get()
-        num = int(b1.get())
-        get_formula(num)
-        get_tree(num)
-        win.destroy()
+            showinfo(title="通知", message="难度未进行选择")
+            allow_submission = 0
+
+        if b1.get() == '' or int(b1.get()) <= 0:
+            showinfo(title="通知", message="输入数量不符合规范")
+            allow_submission = 0
+        if allow_submission == 1:  # 输入数据符合规范才会提交
+            num = int(b1.get())
+            show_answer = v.get()
+            get_formula(num)
+            get_tree(num)
+            win.destroy()
 
     v = IntVar()
     win = Toplevel(root)  # 生成子界面进行插入
@@ -127,8 +151,8 @@ def create_top():
     numberChosen['values'] = ('简单', '适中', '较难', '困难')
     numberChosen.grid(row=0, column=1, columnspan=1)
     show = ["是", "否"]
-    r1 = Radiobutton(win, variable=v, text=show[0], value=1).grid(row=2, column=1, columnspan=1)
-    r2 = Radiobutton(win, variable=v, text=show[1], value=2).grid(row=2, column=2, columnspan=1)
+    Radiobutton(win, variable=v, text=show[0], value=1).grid(row=2, column=1, columnspan=1)
+    Radiobutton(win, variable=v, text=show[1], value=2).grid(row=2, column=2, columnspan=1)
 
     # 要实现单选互斥的效果，
     # variable选项共享一个整型变量，
@@ -147,8 +171,10 @@ def get_interface():
     center_window(600, 350, root)
     root.resizable(0, 0)
     Button(root, text="新建", width=10, command=create_top).place(x=500, y=10)
-    Button(root, text="保存", width=10, command=store_data).place(x=500, y=60)
-    Button(root, text="退出", width=10, command=root.destroy).place(x=500, y=300)
+    Button(root, text="保存", width=10, command=store_data).place(x=500, y=160)
+    Button(root, text="显示答案", width=10, command=Show_answers).place(x=500, y=60)
+    Button(root, text="隐藏答案", width=10, command=Hide_answers).place(x=500, y=110)
+    Button(root, text="退出", width=10, command=quit_root).place(x=500, y=300)
     mainloop()
 
 
